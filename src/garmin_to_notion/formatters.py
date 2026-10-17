@@ -26,6 +26,7 @@ def format_activity_type(
         # Walking variants (includes Hiking)
         "Hiking": "Walking",
         # Cycling variants
+        "Road Biking": "Cycling",
         "Indoor Cycling": "Cycling",
         "Mountain Biking": "Cycling",
         "Gravel Cycling": "Cycling",
