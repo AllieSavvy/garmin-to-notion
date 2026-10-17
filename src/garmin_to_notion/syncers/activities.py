@@ -22,6 +22,32 @@ from garmin_to_notion.mappings import ACTIVITY_EMOJIS
 logger = logging.getLogger(__name__)
 
 
+def _ensure_activity_options(notion, database_id: str, activities: list[dict]) -> None:
+    """Add Garmin activity labels without removing existing Notion options."""
+    wanted = {"Type": set(), "SubType": set()}
+    for activity in activities:
+        main_type, subtype = format_activity_type(
+            activity.get("activityType", {}).get("typeKey", "Unknown"),
+            activity.get("activityName", ""),
+        )
+        wanted["Type"].add(main_type)
+        wanted["SubType"].add(subtype)
+    schema = notion.databases.retrieve(database_id=database_id)["properties"]
+    changes = {}
+    for name, labels in wanted.items():
+        existing = schema[name]["select"]["options"]
+        missing = labels - {option["name"] for option in existing}
+        if missing:
+            changes[name] = {"select": {"options": [
+                {key: value for key, value in option.items()
+                 if key in ("id", "name", "color")}
+                for option in existing
+            ] + [{"name": label} for label in sorted(missing)]}}
+    if changes:
+        notion.databases.update(database_id=database_id, properties=changes)
+        logger.info("Added missing Garmin activity labels to Notion: %s", ", ".join(changes))
+
+
 def _build_properties(activity: dict, settings: Settings) -> dict:
     """Build the Notion properties payload from a Garmin activity."""
     activity_name = activity.get("activityName", "Unnamed Activity")
@@ -202,6 +228,7 @@ def sync_activities(
     """Sync all Garmin activities to the Notion Activities database."""
     activities = garmin.get_activities(0, settings.fetch_limit)
     logger.info("Fetched %d activities from Garmin", len(activities))
+    _ensure_activity_options(notion, settings.activities_db_id, activities)
 
     created, updated, skipped = 0, 0, 0
 
