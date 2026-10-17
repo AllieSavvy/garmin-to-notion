@@ -5,16 +5,21 @@ on:
     - cron: '0 6 * * *'
   workflow_dispatch:
 
+concurrency:
+  group: garmin-sync
+  cancel-in-progress: false
+
 jobs:
   sync:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.12'
 
       - name: Cache pip packages
         uses: actions/cache@v4
@@ -29,9 +34,9 @@ jobs:
         id: garmin-tokens
         with:
           path: ~/.garmin_tokens
-          key: garmin-tokens-${{ github.run_id }}
+          key: garmin-native-tokens-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
-            garmin-tokens-
+            garmin-native-tokens-
 
       - name: Install dependencies
         run: |
@@ -42,7 +47,6 @@ jobs:
         env:
           GARMIN_EMAIL: ${{ secrets.GARMIN_EMAIL }}
           GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
-          GARMIN_TOKENS: ${{ secrets.GARMIN_TOKENS }}
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
           GARMIN_TOKENSTORE: ~/.garmin_tokens
           TIMEZONE: ${{ vars.TIMEZONE || 'UTC' }}
