@@ -111,6 +111,7 @@ def main() -> None:
 
     commands = list(sync_map.keys()) if args.command == "all" else [args.command]
 
+    failed = []
     for cmd in commands:
         if not db_check.get(cmd):
             logger.info("Skipping %s (no database ID configured)", cmd)
@@ -119,9 +120,14 @@ def main() -> None:
             logger.info("Starting %s sync...", cmd)
             sync_map[cmd]()
         except Exception as e:
+            failed.append(cmd)
             logger.error("Error during %s sync: %s", cmd, e, exc_info=args.verbose)
             if args.command != "all":
                 sys.exit(1)
+
+    if failed:
+        logger.error("Sync failed for: %s", ", ".join(failed))
+        sys.exit(1)
 
 
 if __name__ == "__main__":
